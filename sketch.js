@@ -75,6 +75,7 @@ let quizState = 'idle'; // 'idle', 'asking', 'answered'
 let feedbackTimeout;
 let questionDeck = []; // 新增：儲存問題索引的牌組
 let currentDeckIndex = 0; // 新增：目前在牌組中的索引
+let isQuizReady = false; // 新增：測驗是否準備就緒的標誌
 
 // p5.js 預載入資源的函式
 function preload() {
@@ -88,7 +89,17 @@ function preload() {
     char2FallDownSheet = loadImage('2/fall_down/fall_down_2.png');
 
     // 載入 CSV 測驗題庫
-    quizTable = loadTable('quiz.csv', 'csv', 'header');
+    // 使用回呼函式確保 CSV 載入完成後再初始化牌組
+    quizTable = loadTable('quiz.csv', 'csv', 'header', (table) => {
+        // --- 初始化並洗牌測驗題庫 ---
+        if (table.getRowCount() > 0) {
+            for (let i = 0; i < table.getRowCount(); i++) {
+                questionDeck.push(i);
+            }
+            shuffleDeck();
+            isQuizReady = true; // 標記測驗已準備好
+        }
+    });
 }
 
 // p5.js 設定初始狀態的函式 (只執行一次)
@@ -103,14 +114,6 @@ function setup() {
 
     characterY = height / 2;
     groundY = characterY; // 設定地面高度
-
-    // --- 初始化並洗牌測驗題庫 ---
-    if (quizTable.getRowCount() > 0) {
-        for (let i = 0; i < quizTable.getRowCount(); i++) {
-            questionDeck.push(i);
-        }
-        shuffleDeck();
-    }
 
     // 切割站立動畫的每一幀
     for (let i = 0; i < STOP_FRAMES; i++) {
@@ -286,7 +289,7 @@ function draw() {
 
         // 剛進入範圍且沒有輸入框時，建立互動
         if (!wasNearChar2 && !inputBox) {
-            if (quizState === 'idle' || quizState === 'answered') {
+            if (isQuizReady && (quizState === 'idle' || quizState === 'answered')) {
                 startQuiz();
             }
         }
